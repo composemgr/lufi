@@ -47,8 +47,8 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/config/lufi` - Data storage
-- `./rootfs/data/lufi` - Data storage
+- `./volumes/config/lufi` - Data storage
+- `./volumes/data/lufi` - Data storage
 
 ## 🔍 Logging
 
