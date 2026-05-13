@@ -16,10 +16,14 @@ services:
     logging: *default-logging
     networks:
       - lufi
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8107:8080"
     environment:
       TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: lufi-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
       LUFI_CONTACT: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
       LUFI_SECRETS: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       LUFI_MAX_FILE_SIZE: 104857600
@@ -28,8 +32,28 @@ services:
     volumes:
       - ./volumes/config/lufi:/lufi/config
       - ./volumes/data/lufi:/lufi/files
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://lufi-app:8080'
+      - 'cloudflare.hostname=lufi.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.lufi-app.entrypoints=http'
+      - 'traefik.http.routers.lufi-app-secure.tls=true'
+      - 'traefik.http.routers.lufi-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.lufi-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.lufi-app.middlewares=lufi-app-https-redirect'
+      - 'traefik.http.routers.lufi-app-secure.entrypoints=https'
+      - 'traefik.http.routers.lufi-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.lufi-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.lufi-app-secure.service=lufi-app'
+      - 'traefik.http.services.lufi-app.loadbalancer.server.port=8080'
 
 networks:
   lufi:
     name: lufi
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
