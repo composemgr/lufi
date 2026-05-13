@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8107
 
+name: lufi
 x-logging: &default-logging
   driver: json-file
   options:
@@ -8,27 +9,27 @@ x-logging: &default-logging
 
 services:
   lufi:
-    image: lufi/lufi:latest
+    image: silkeh/lufi:latest
+    pull_policy: always
     container_name: lufi-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - lufi
     ports:
-      - "8107:8107"
+      - "172.17.0.1:8107:8080"
     environment:
       TZ: ${TZ:-America/New_York}
-      PUID: ${SERVICE_USER:-1000}
-      PGID: ${SERVICE_GROUP:-1000}
+      LUFI_CONTACT: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+      LUFI_SECRETS: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      LUFI_MAX_FILE_SIZE: 104857600
+      LUFI_DEFAULT_DELAY: 0
+      LUFI_MAX_DELAY: 0
     volumes:
-      - ./volumes/config/lufi:/config
-      - ./volumes/data/lufi:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8107"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ./volumes/config/lufi:/lufi/config
+      - ./volumes/data/lufi:/lufi/files
 
 networks:
   lufi:
+    name: lufi
     external: false
