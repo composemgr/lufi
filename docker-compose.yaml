@@ -1,59 +1,39 @@
-# nginx proxy address - http://172.17.0.1:8107
+# nginx proxy address - http://172.17.0.1:64241
 
 name: lufi
 x-logging: &default-logging
-  driver: json-file
   options:
-    max-size: "5m"
-    max-file: "1"
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
 
 services:
-  lufi:
+  app:
     image: silkeh/lufi:latest
-    pull_policy: always
     container_name: lufi-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
     restart: always
+    pull_policy: always
     logging: *default-logging
-    networks:
-      - lufi
-      - proxy
-      - cloudflare
-    ports:
-      - "172.17.0.1:8107:8080"
     environment:
       TZ: ${TZ:-America/New_York}
       CONTAINER_NAME: lufi-app
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
-      LUFI_CONTACT: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
-      LUFI_SECRETS: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
-      LUFI_MAX_FILE_SIZE: 104857600
-      LUFI_DEFAULT_DELAY: 0
-      LUFI_MAX_DELAY: 0
+      LUFI_CONTACT: ${LUFI_CONTACT:-admin@example.com}
+      LUFI_SECRETS: ${APP_SECRET_KEY:-replace-with-a-random-secret-min-32-chars}
+      LUFI_MAX_FILE_SIZE: ${LUFI_MAX_FILE_SIZE:-104857600}
+      LUFI_DEFAULT_DELAY: ${LUFI_DEFAULT_DELAY:-0}
+      LUFI_MAX_DELAY: ${LUFI_MAX_DELAY:-0}
+    ports:
+      - '172.17.0.1:64241:8080'
     volumes:
-      - ./volumes/config/lufi:/lufi/config
-      - ./volumes/data/lufi:/lufi/files
-    labels:
-      - 'traefik.enable=true'
-      - 'cloudflare.enable=true'
-      - 'traefik.docker.network=proxy'
-      - 'cloudflare.service=http://lufi-app:8080'
-      - 'cloudflare.hostname=lufi.${CLOUDFLARE_ZONE_NAME:-}'
-      - 'traefik.http.routers.lufi-app.entrypoints=http'
-      - 'traefik.http.routers.lufi-app-secure.tls=true'
-      - 'traefik.http.routers.lufi-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.middlewares.lufi-app-https-redirect.redirectscheme.scheme=https'
-      - 'traefik.http.routers.lufi-app.middlewares=lufi-app-https-redirect'
-      - 'traefik.http.routers.lufi-app-secure.entrypoints=https'
-      - 'traefik.http.routers.lufi-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.routers.lufi-app-secure.tls.certresolver=cloudflare'
-      - 'traefik.http.routers.lufi-app-secure.service=lufi-app'
-      - 'traefik.http.services.lufi-app.loadbalancer.server.port=8080'
+      - './volumes/config/lufi:/lufi/config:z'
+      - './volumes/data/lufi:/lufi/files:z'
+    networks:
+      - lufi
 
 networks:
   lufi:
     name: lufi
     external: false
-  proxy:
-    external: true
-  cloudflare:
-    external: true
