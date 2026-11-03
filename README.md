@@ -15,7 +15,7 @@ config volume, so both volumes need to be backed up together.
 
 ## 🚀 Services
 
-- **app**: silkeh/lufi:latest
+- **app**: ghcr.io/megalis-bretagne/lufi:latest
 
 ## 📦 Installation
 

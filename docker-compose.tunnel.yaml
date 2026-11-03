@@ -9,32 +9,56 @@ x-logging: &default-logging
 
 services:
   app:
-    image: silkeh/lufi:latest
+    image: ghcr.io/megalis-bretagne/lufi:latest
     container_name: lufi-app
     domainname: ${BASE_DOMAIN_NAME:-example.com}
     hostname: ${BASE_HOST_NAME:-$HOSTNAME}
     restart: always
     pull_policy: always
     logging: *default-logging
+    user: '0:0'
     environment:
       TZ: ${TZ:-America/New_York}
       CONTAINER_NAME: lufi-app
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
-      LUFI_CONTACT: ${LUFI_CONTACT:-admin@example.com}
-      LUFI_SECRETS: ${APP_SECRET_KEY:-replace-with-a-random-secret-min-32-chars}
-      LUFI_MAX_FILE_SIZE: ${LUFI_MAX_FILE_SIZE:-104857600}
-      LUFI_DEFAULT_DELAY: ${LUFI_DEFAULT_DELAY:-0}
-      LUFI_MAX_DELAY: ${LUFI_MAX_DELAY:-0}
-    volumes:
-      - './volumes/config/lufi:/lufi/config:z'
-      - './volumes/data/lufi:/lufi/files:z'
     labels:
       - 'cloudflare.enable=true'
-      - 'cloudflare.service=http://lufi-app:8080'
+      - 'cloudflare.service=http://lufi-app:8081'
       - 'cloudflare.hostname=${BASE_HOST_NAME:-$HOSTNAME}'
+    configs:
+      - source: lufi_conf
+        target: /home/nonroot/lufi/lufi.conf
+    volumes:
+      - './volumes/data/lufi:/home/nonroot/lufi/files:z'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s -o /dev/null --max-time 5 http://127.0.0.1:8081/']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - lufi
       - cloudflare
+
+  cron:
+    image: ghcr.io/megalis-bretagne/lufi:latest
+    container_name: lufi-cron
+    hostname: lufi-cron
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    user: '0:0'
+    command: cron
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: lufi-cron
+    configs:
+      - source: lufi_conf
+        target: /home/nonroot/lufi/lufi.conf
+    volumes:
+      - './volumes/data/lufi:/home/nonroot/lufi/files:z'
+    networks:
+      - lufi
 
 networks:
   lufi:
@@ -42,3 +66,26 @@ networks:
     external: false
   cloudflare:
     external: true
+
+configs:
+  lufi_conf:
+    content: |
+      {
+        hypnotoad => {
+          listen => ['http://0.0.0.0:8081'],
+          workers => 4,
+          clients => 100,
+        },
+        contact => '${LUFI_CONTACT:-admin@example.com}',
+        report => '${LUFI_CONTACT:-admin@example.com}',
+        secrets => ['${APP_SECRET_KEY:-replace-with-a-random-secret-min-32-chars}'],
+        instance_name => '${LUFI_INSTANCE_NAME:-Lufi}',
+        length => 8,
+        token_length => 32,
+        max_file_size => ${LUFI_MAX_FILE_SIZE:-104857600},
+        default_delay => ${LUFI_DEFAULT_DELAY:-0},
+        max_delay => ${LUFI_MAX_DELAY:-0},
+        upload_dir => 'files',
+        zip_files => 0,
+        csp => '',
+      };
